@@ -33,8 +33,15 @@ def main():
     mel_scale = spectrogram_transforms.mel_transform(audio_data)
     model = Mel_Convolv(80, 1470)
 
-    ## Reshape the mel_scale from (1, n, 80) to (n//1470, 80, 1470)
-    mel_scale = mel_scale.swapdims(1,2).view(-1, 80, 1470)
+    # Reshape from 1x80xn to (n//1470)x80x1470
+    # Calculate the desired size after reshaping
+    N = mel_scale.size(2)
+    new_size = (N // 1480, 1480, 80)
+    remaining = N % 1480
+    ## cut the remaining part
+    mel_scale = mel_scale[:, :, :-remaining]
+    # Reshape the padded tensor
+    mel_scale = mel_scale.swapdims(1,2).reshape(new_size).swapdims(1,2)
 
     ## Start training loop
     ddpm = DDPM_Scheduler(
