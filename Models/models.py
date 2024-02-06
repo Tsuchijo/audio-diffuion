@@ -29,5 +29,5 @@ class Mel_Convolv(torch.nn.Module):
         x3 = self.relu(self.fc1(x2.view(-1, 10*184*128)))
         x4 = self.relu(self.fc2(x3))
         x5 = self.relu(self.conv3(x4.view(-1, 128, 10, 184) + x2))
-        x6 = self.conv4(x5 + x1)
+        x6 = self.conv4(x5)
         return x6
