@@ -10,6 +10,8 @@ class DDPM_Scheduler:
         self.betas = torch.linspace(beta_min, beta_max, t_total).to(device).unsqueeze(1)
         self.alphas = 1.0 - self.betas
         self.alphas_bar = torch.cumprod(self.alphas, dim=0)
+        self.model = model
+    
 
 
     ## Forward pass ##
