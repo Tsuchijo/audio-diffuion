@@ -13,6 +13,7 @@ class DDPM_Scheduler:
         self.model = model.to(device)
         self.t_total = t_total
 
+
     
 
 
@@ -25,10 +26,12 @@ class DDPM_Scheduler:
 
 
     ## Training Loops, For now only works with 1 batch of input samples ##
-    def train(self, x0, iters):
+    def train(self, dataloader, iters):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
         loss_fn = torch.nn.MSELoss().to(self.device)
+        iter_loader = iter(dataloader)
         for iteration in range(iters):
+            x0 = next(iter_loader).to(self.device)
             timestep = (torch.randint(0, self.t_total-1, (x0.shape[0],)) ).to(self.device)
             x_t, eps = self.forward(x0, timestep)
 

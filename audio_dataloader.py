@@ -16,7 +16,7 @@ class AudioDataset(torch.utils.data.Dataset):
             n_fft=1024,
             win_length=1024,
             hop_length=512,
-            n_mels=128,
+            n_mels=80,
             sample_rate=44100,
             device=device,
         )
