@@ -10,9 +10,9 @@ class Spectrogram():
         hop_length=512,
         normalized=False,
         n_mels=128,
-        sample_rate=44100
+        sample_rate=44100,
+        device='cuda'
     ): 
-        self.window_fn = torch.hann_window
         self.melspectrogram = transforms.MelSpectrogram(
             sample_rate=sample_rate,
             n_fft=n_fft,
@@ -22,8 +22,7 @@ class Spectrogram():
             f_min = 0.0,
              f_max = sample_rate // 2,
             normalized=normalized,
-            window_fn=self.window_fn,
-        )
+        ).to(device)
 
         self.inverse_mel = transforms.InverseMelScale(
             sample_rate=sample_rate,
@@ -31,14 +30,14 @@ class Spectrogram():
             n_mels=n_mels,
             f_min = 0.0,
             f_max = sample_rate // 2,
-        )
+        ).to(device)
 
         self.griffin_lim = transforms.GriffinLim(
             n_fft=n_fft,
             win_length=win_length,
             hop_length=hop_length,
-            window_fn=self.window_fn,
-        )
+            n_iter=32,
+        ).to(device)
 
     def mel_transform(self, input_data):
         return self.melspectrogram(input_data)

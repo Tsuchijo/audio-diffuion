@@ -1,3 +1,7 @@
 checkpoints/
 diffusion-env
 __pychache__
+data/
+model.pt
+wandb
+*.pt
