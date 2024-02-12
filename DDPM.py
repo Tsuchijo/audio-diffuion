@@ -45,6 +45,11 @@ class DDPM_Scheduler:
 
             ## Log to wandb
             wandb.log({'Loss': loss.item()})
+            if iteration % 5 == 0:
+                mel_image = x_t[0] - (((1 - self.alphas[timestep[0]]) / torch.sqrt(1 - self.alphas_bar[timestep[0]])) * eps[0])
+                # convert to numpy and add channel
+                mel_image = np.expand_dims(mel_image.to('cpu').numpy(), axis=-1)
+                wandb.log({"Denoised Spectrograph": wandb.Image(mel_image)})
             print('Iteration: ', iteration, 'Loss: ', loss.item(), end='\r')
 
         
