@@ -27,11 +27,10 @@ class DDPM_Scheduler:
 
     ## Training Loops, For now only works with 1 batch of input samples ##
     def train(self, dataloader, iters):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=5e-4)
         loss_fn = torch.nn.MSELoss().to(self.device)
-        iter_loader = iter(dataloader)
+        x0 = next(iter(dataloader)).to(self.device)
         for iteration in range(iters):
-            x0 = next(iter_loader).to(self.device)
             timestep = (torch.randint(0, self.t_total-1, (x0.shape[0],)) ).to(self.device)
             x_t, eps = self.forward(x0, timestep)
 
@@ -45,11 +44,13 @@ class DDPM_Scheduler:
 
             ## Log to wandb
             wandb.log({'Loss': loss.item()})
-            if iteration % 5 == 0:
+            if iteration % 250 == 0:
                 mel_image = x_t[0] - (((1 - self.alphas[timestep[0]]) / torch.sqrt(1 - self.alphas_bar[timestep[0]])) * eps[0])
                 # convert to numpy and add channel
-                mel_image = np.expand_dims(mel_image.to('cpu').numpy(), axis=-1)
+                mel_image = np.log(np.abs(np.expand_dims(mel_image.to('cpu').numpy(), axis=-1)))
+                noise_diff = np.expand_dims((eps_pred[0] - eps[0]).detach().to('cpu').numpy(), axis=-1)
                 wandb.log({"Denoised Spectrograph": wandb.Image(mel_image)})
+                wandb.log({"Noise Difference": wandb.Image(noise_diff)})
             print('Iteration: ', iteration, 'Loss: ', loss.item(), end='\r')
 
         

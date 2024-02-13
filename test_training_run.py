@@ -11,20 +11,26 @@ from DDPM import DDPM_Scheduler
 import wandb
 import audio_dataloader
 from torch.utils.data import DataLoader
+import torch.nn.init as init
+
 
 def main():
     print('Loading Data')
-    data_path = 'data/'
-    loader = audio_dataloader.AudioDataset(data_path, 512*500, 'cpu')
-    dataloader = DataLoader(loader, batch_size=10, shuffle=True)
-    model = Mel_MLP(80, 501)
+    # Initialize all layers of a neural network with random values
+    def init_weights(m):
+        if isinstance(m, torch.nn.Linear):
+            m.weight.data.normal_(0, 1.0)
 
-   
+    data_path = 'data/'
+    loader = audio_dataloader.AudioDataset(data_path, 512*100, 'cpu')
+    dataloader = DataLoader(loader, batch_size=1, shuffle=True)
+    model = Mel_MLP(80, 101, embedding_dim=4096, num_hidden=3)
+    #model.apply(init_weights)	
     wandb.init(project='ddpm-audio')
     ## Start training loop
     ddpm = DDPM_Scheduler(
         t_total=1000,
-        beta_min=1e-4,
+        beta_min=0.0001,
         beta_max=0.02,
         model=model,
         device='cuda',
