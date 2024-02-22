@@ -24,12 +24,12 @@ def get_timestep_embedding(timesteps, embedding_dim):
     return emb
 
 class Mel_MLP(torch.nn.Module):
-    def __init__(self, in_mels, in_width, num_timesteps=1000, embedding_dim=1024, num_hidden = 5):
+    def __init__(self, in_mels, in_width, num_timesteps=1000, embedding_dim=4096, num_hidden = 5):
         super(Mel_MLP, self).__init__()
         ## Fully Connected model 
         self.fc_in = torch.nn.Linear(in_mels*in_width, embedding_dim)
         for i in range(num_hidden):
-            setattr(self, f'fc{i}', torch.nn.Linear(embedding_dim, embedding_dim))
+            setattr(self, f'fc{i}', torch.nn.Linear(embedding_dim*2, embedding_dim))
         self.fc_out = torch.nn.Linear(embedding_dim, in_mels*in_width)
         self.relu = torch.nn.ReLU()
         self.flatten = torch.nn.Flatten()
@@ -45,6 +45,7 @@ class Mel_MLP(torch.nn.Module):
         x_flat = self.flatten(x)
         x1 = self.relu(self.fc_in(x_flat))
         for i in range(self.num_hidden):
-            x1 = self.relu(getattr(self, f'fc{i}')(x1 + self.timestep_embedding[timesteps]))
+            x1 = self.relu(getattr(self, f'fc{i}')(torch.cat((x1, self.timestep_embedding[timesteps]), dim=1)))
         x3 = self.fc_out(x1)
         return self.unflatten(x3)
+    

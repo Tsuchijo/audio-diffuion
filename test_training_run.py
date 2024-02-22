@@ -22,9 +22,9 @@ def main():
             m.weight.data.normal_(0, 1.0)
 
     data_path = 'data/'
-    loader = audio_dataloader.AudioDataset(data_path, 512*100, 'cpu')
-    dataloader = DataLoader(loader, batch_size=1, shuffle=True)
-    model = Mel_MLP(80, 101, embedding_dim=4096, num_hidden=3)
+    loader = audio_dataloader.AudioDataset(data_path, 512*10, 'cpu')
+    dataloader = DataLoader(loader, batch_size=1, shuffle=False)
+    model = Mel_MLP(80, 11, embedding_dim=1024, num_hidden=2)
     #model.apply(init_weights)	
     wandb.init(project='ddpm-audio')
     ## Start training loop
@@ -35,7 +35,7 @@ def main():
         model=model,
         device='cuda',
     )
-    ddpm.train(dataloader, 10000)
+    ddpm.train(dataloader, 600000)
     ## Save the model
     torch.save(model.state_dict(), 'model.pt')
     

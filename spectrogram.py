@@ -7,10 +7,10 @@ class Spectrogram():
         self, 
         n_fft=1024,
         win_length=1024,
-        hop_length=512,
+        hop_length=160,
         normalized=False,
-        n_mels=128,
-        sample_rate=44100,
+        n_mels=64,
+        sample_rate=16000,
         device='cuda'
     ): 
         self.melspectrogram = transforms.MelSpectrogram(
