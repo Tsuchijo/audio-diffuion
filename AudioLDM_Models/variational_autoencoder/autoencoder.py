@@ -1,10 +1,8 @@
 import torch
-from audioldm.latent_diffusion.ema import *
-from modules import Encoder, Decoder
-from distributions import DiagonalGaussianDistribution
-
-from audioldm.hifigan.utilities import get_vocoder, vocoder_infer
-
+from torch import nn
+from AudioLDM_Models.variational_autoencoder.modules import Encoder, Decoder
+from AudioLDM_Models.variational_autoencoder.distributions import DiagonalGaussianDistribution
+from HiFiGan.HifiGan import load_model as get_vocoder, vocoder_infer
 
 class AutoencoderKL(nn.Module):
     def __init__(
@@ -26,7 +24,8 @@ class AutoencoderKL(nn.Module):
 
         self.encoder = Encoder(**ddconfig)
         self.decoder = Decoder(**ddconfig)
-
+        self.encoder = self.encoder.eval()
+        self.decoder = self.decoder.eval()
         self.subband = int(subband)
 
         if self.subband > 1:
@@ -35,7 +34,7 @@ class AutoencoderKL(nn.Module):
         self.quant_conv = torch.nn.Conv2d(2 * ddconfig["z_channels"], 2 * embed_dim, 1)
         self.post_quant_conv = torch.nn.Conv2d(embed_dim, ddconfig["z_channels"], 1)
 
-        self.vocoder = get_vocoder(None, "cpu")
+        self.vocoder = get_vocoder("checkpoints/hifigan_16k_64bins.json", "cpu")
         self.embed_dim = embed_dim
 
         if monitor is not None:
@@ -49,14 +48,16 @@ class AutoencoderKL(nn.Module):
     def encode(self, x):
         # x = self.time_shuffle_operation(x)
         x = self.freq_split_subband(x)
-        h = self.encoder(x)
+        with torch.no_grad():
+            h = self.encoder(x)
         moments = self.quant_conv(h)
-        posterior = DiagonalGaussianDistribution(moments)
+        posterior = DiagonalGaussianDistribution(moments, True)
         return posterior
 
     def decode(self, z):
         z = self.post_quant_conv(z)
-        dec = self.decoder(z)
+        with torch.no_grad():
+            dec = self.decoder(z)
         dec = self.freq_merge_subband(dec)
         return dec
 

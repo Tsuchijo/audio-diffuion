@@ -3,21 +3,22 @@ from torchaudio import load, info
 import spectrogram
 import torch
 import numpy as np
+import torchaudio
 
 ## Dataset for any arbitrary audio data
 # Data should be split up into sections of samples a set length
 # Assumes all audio is wav format 441000 sample rate
 class AudioDataset(torch.utils.data.Dataset):
-    def __init__(self, data_path, frame_length, device='cpu'):
+    def __init__(self, data_path, frame_length, sample_rate=16000, device='cpu'):
         self.data_path = data_path
         self.data = os.listdir(data_path)
         self.data = [os.path.join(data_path, file) for file in self.data]
         self.spectrogram_transforms = spectrogram.Spectrogram(
             n_fft=1024,
             win_length=1024,
-            hop_length=512,
-            n_mels=80,
-            sample_rate=44100,
+            hop_length=160,
+            n_mels=64,
+            sample_rate=sample_rate,
             device=device,
         )
         ## Iterate through all available audio files and get their metadata,
@@ -27,6 +28,8 @@ class AudioDataset(torch.utils.data.Dataset):
         self.num_frames = np.array([size//frame_length for size in files_sizes])
         self.cumulative_frames = np.cumsum(self.num_frames)
         self.device = device
+        self.sample_rate = sample_rate
+        self.resampler = torchaudio.transforms.Resample(44100, sample_rate, rolloff=0.9, lowpass_filter_width=1, dtype=torch.float32)
 
     def __len__(self):
         return sum(self.num_frames)
@@ -37,9 +40,15 @@ class AudioDataset(torch.utils.data.Dataset):
 
         frame_start = (idx - self.cumulative_frames[file_idx-1] if file_idx > 0 else idx) * self.frame_length
         ## Load the audio the from the file
-        audio_data, _ = load(self.data[file_idx], frame_offset=frame_start, num_frames=self.frame_length)
+        audio_data, source_sample_rate = load(self.data[file_idx], frame_offset=frame_start, num_frames=self.frame_length, normalize=True)
+        ## Downsample data from source sample rate to target sample rate
+        ## Filter audio data with cutoff at 8000 hz
+        audio_data = torchaudio.functional.lowpass_biquad(audio_data, source_sample_rate, cutoff_freq=8000)
+        audio_data = torchaudio.functional.resample(audio_data, source_sample_rate, self.sample_rate)
+
         ## Transform audio into mono
         audio_data = torch.mean(audio_data, dim=0)
         ## Transform the audio data into a mel spectrogram
         mel_scale = self.spectrogram_transforms.mel_transform(audio_data.to(self.device))
+        mel_scale =  torch.log(torch.clamp(mel_scale, min=1e-5)).swapaxes(0,1).unsqueeze(0)
         return mel_scale

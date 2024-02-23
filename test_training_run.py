@@ -6,26 +6,35 @@ import re
 import spectrogram
 import torchaudio 
 from scipy.io import wavfile
-from Models.models import Mel_MLP
+from Models.models import Latent_MLP
 from DDPM import DDPM_Scheduler
 import wandb
 import audio_dataloader
 from torch.utils.data import DataLoader
 import torch.nn.init as init
+from AudioLDM_Models.variational_autoencoder.autoencoder import AutoencoderKL
+import yaml
 
 
 def main():
     print('Loading Data')
-    # Initialize all layers of a neural network with random values
-    def init_weights(m):
-        if isinstance(m, torch.nn.Linear):
-            m.weight.data.normal_(0, 1.0)
 
+    ## Load Autoencoder from weights 
+    VAE_config = yaml.load(open('checkpoints/16k_64.yaml', 'r'), Loader=yaml.FullLoader)
+    Autoencoder = AutoencoderKL(**VAE_config['model']['params'])
+    state_dict = torch.load('checkpoints/vae_mel_16k_64bins.ckpt')['state_dict']
+    state_dict = {k: v for k, v in state_dict.items() if not re.match('loss', k)}
+    Autoencoder.load_state_dict(state_dict)
+    Autoencoder.encoder.to('cpu')
     data_path = 'data/'
-    loader = audio_dataloader.AudioDataset(data_path, 512*10, 'cpu')
-    dataloader = DataLoader(loader, batch_size=1, shuffle=False)
-    model = Mel_MLP(80, 11, embedding_dim=1024, num_hidden=2)
-    #model.apply(init_weights)	
+    hop_length = 160
+    target_sample_rate = 16000
+    num_frames = 255
+    input_length = hop_length*num_frames*44100//target_sample_rate
+
+    loader = audio_dataloader.AudioDataset(data_path, input_length, target_sample_rate,'cpu')
+    dataloader = DataLoader(loader, batch_size=1000, shuffle=True, num_workers=8)
+    model = Latent_MLP((8,num_frames//4,16), embedding_dim=1024, num_hidden=2)
     wandb.init(project='ddpm-audio')
     ## Start training loop
     ddpm = DDPM_Scheduler(
@@ -33,6 +42,7 @@ def main():
         beta_min=0.0001,
         beta_max=0.02,
         model=model,
+        autoencoder=Autoencoder,
         device='cuda',
     )
     ddpm.train(dataloader, 600000)

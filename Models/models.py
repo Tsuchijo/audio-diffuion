@@ -1,5 +1,6 @@
 import torch
 import math
+import numpy as np
 
 def get_timestep_embedding(timesteps, embedding_dim):
     """
@@ -49,3 +50,29 @@ class Mel_MLP(torch.nn.Module):
         x3 = self.fc_out(x1)
         return self.unflatten(x3)
     
+class Latent_MLP(torch.nn.Module):
+    def __init__(self, in_shape, num_timesteps=1000, embedding_dim=1024, num_hidden=3):
+        super(Latent_MLP, self).__init__()
+        ## Flatten input from input shape to 1D
+        self.flatten = torch.nn.Flatten()
+        self.unflatten = torch.nn.Unflatten(1, in_shape)
+        in_length = np.prod(in_shape)
+        self.fc_in = torch.nn.Linear(in_length, embedding_dim)
+        for i in range(num_hidden):
+            setattr(self, f'fc{i}', torch.nn.Linear(embedding_dim*2, embedding_dim))
+        self.fc_out = torch.nn.Linear(embedding_dim, in_length)
+        self.relu = torch.nn.ReLU()
+        self.num_hidden = num_hidden
+        ## Use Sinusoidal Embeddings for Timesteps injected into the embeddings dims
+        # convert to device
+        self.timestep_embedding = get_timestep_embedding(torch.arange(num_timesteps), embedding_dim)
+        self.timestep_embedding = torch.nn.Parameter(self.timestep_embedding, requires_grad=False)
+    
+    ## Forward Pass
+    def forward(self, x, timesteps):
+        x_flat = self.flatten(x)
+        x1 = self.relu(self.fc_in(x_flat))
+        for i in range(self.num_hidden):
+            x1 = self.relu(getattr(self, f'fc{i}')(torch.cat((x1, self.timestep_embedding[timesteps]), dim=1)))
+        x3 = self.fc_out(x1)
+        return self.unflatten(x3)

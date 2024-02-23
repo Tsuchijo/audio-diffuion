@@ -8,7 +8,7 @@ class Spectrogram():
         n_fft=1024,
         win_length=1024,
         hop_length=160,
-        normalized=False,
+        normalized=True,
         n_mels=64,
         sample_rate=16000,
         device='cuda'
@@ -19,8 +19,6 @@ class Spectrogram():
             win_length=win_length,
             hop_length=hop_length,
             n_mels=n_mels,
-            f_min = 0.0,
-             f_max = sample_rate // 2,
             normalized=normalized,
         ).to(device)
 

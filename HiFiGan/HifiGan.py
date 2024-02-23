@@ -19,3 +19,10 @@ def load_model(config_path, device):
     generator.remove_weight_norm()
 
     return generator
+
+def vocoder_infer(mel, vocoder):
+    ## add 10 empty channels to dim 1
+    # reverse the second dimension order
+    with torch.no_grad():
+        wav = vocoder(mel)
+    return wav
