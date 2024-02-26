@@ -5,14 +5,13 @@ import wandb
 
 class DDPM_Scheduler:
 
-    def __init__(self, t_total, beta_min, beta_max, model, autoencoder, device):
+    def __init__(self, t_total, beta_min, beta_max, model, device):
         self.device = device
         self.betas = torch.linspace(beta_min, beta_max, t_total).to(device).unsqueeze(1)
         self.alphas = 1.0 - self.betas
         self.alphas_bar = torch.cumprod(self.alphas, dim=0)
         self.model = model.to(device)
         self.t_total = t_total
-        self.autoencoder = autoencoder.to(device)
 
     ## Forward pass ##
     def forward(self, x0, timestep):
@@ -32,8 +31,7 @@ class DDPM_Scheduler:
                 torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
         for iteration in range(iters):
-            x0_mel = next(iter(dataloader)).to(self.device)
-            x0 = self.autoencoder.encode(x0_mel).detach()
+            x0 = next(iter(dataloader)).to(self.device)
             timestep = (torch.randint(0, self.t_total-1, (x0.shape[0],)) ).to(self.device)
             x_t, eps = self.forward(x0, timestep)
             eps_pred = self.model(x_t.unsqueeze(1), timestep.to(self.device))

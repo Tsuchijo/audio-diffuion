@@ -4,6 +4,7 @@ import spectrogram
 import torch
 import numpy as np
 import torchaudio
+import sqlite3
 
 ## Dataset for any arbitrary audio data
 # Data should be split up into sections of samples a set length
@@ -52,3 +53,22 @@ class AudioDataset(torch.utils.data.Dataset):
         mel_scale = self.spectrogram_transforms.mel_transform(audio_data.to(self.device))
         mel_scale =  torch.log(torch.clamp(mel_scale, min=1e-5)).swapaxes(0,1).unsqueeze(0)
         return mel_scale
+    
+class SQLiteDataset(torch.utils.data.Dataset):
+   class SQLiteDataset(torch.utils.data.Dataset):
+    def __init__(self, db_path, table_name):
+        self.db_path = db_path
+        self.table_name = table_name
+
+    def __getitem__(self, idx):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM {self.table_name} WHERE ID=?", (idx+1,))
+        data_blob = cursor.fetchone()[1]
+        conn.close()
+        tensor_data = torch.from_numpy(torch.tensor(data_blob))
+        return tensor_data
+
+    def __len__(self):
+       return None
+

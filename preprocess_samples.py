@@ -50,7 +50,6 @@ for i, data in enumerate(iter_loader):
     ## save the data
     print("Loading slice: " + i)
     indices = np.arange(i * batch_size,(i+1)*batch_size)
-    data_pairs  = [(index, embedding) for index, embedding in zip(indices, data)]
     cur.executemany("INSERT INTO embedding VALUES(?, ?)", data)
     con.commit()  # Remember to commit the transaction after executing INSERT.
 
