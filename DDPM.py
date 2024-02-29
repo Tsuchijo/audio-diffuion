@@ -23,7 +23,7 @@ class DDPM_Scheduler:
 
     ## Training Loops, For now only works with 1 batch of input samples ##
     def train(self, dataloader, iters):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
         loss_fn = torch.nn.MSELoss().to(self.device)
         ## randomly initialize weights
         for m in self.model.modules():
@@ -42,8 +42,8 @@ class DDPM_Scheduler:
             # Zero out gradients
             optimizer.zero_grad()
 
-            ## Log to wandb
-            # wandb.log({'Loss': loss.item()})
+            # Log to wandb
+            wandb.log({'Loss': loss.item()})
             # if iteration % 250 == 0:
             #     mel_image = x_t[0] - (((1 - self.alphas[timestep[0]]) / torch.sqrt(1 - self.alphas_bar[timestep[0]])) * eps[0])
             #     # convert to numpy and add channel

@@ -13,7 +13,7 @@ class AudioDataset(torch.utils.data.Dataset):
     def __init__(self, data_path, frame_length, sample_rate=16000, device='cpu'):
         self.data_path = data_path
         self.data = os.listdir(data_path)
-        self.data = [os.path.join(data_path, file) for file in self.data]
+        self.data = [os.path.join(data_path, file) for file in self.data if '.wav' in file]
         self.spectrogram_transforms = spectrogram.Spectrogram(
             n_fft=1024,
             win_length=1024,
@@ -55,10 +55,10 @@ class AudioDataset(torch.utils.data.Dataset):
         return mel_scale
     
 class SQLiteDataset(torch.utils.data.Dataset):
-   class SQLiteDataset(torch.utils.data.Dataset):
-    def __init__(self, db_path, table_name):
+    def __init__(self, db_path, table_name, shape):
         self.db_path = db_path
         self.table_name = table_name
+        self.shape = shape
 
     def __getitem__(self, idx):
         conn = sqlite3.connect(self.db_path)
@@ -66,9 +66,15 @@ class SQLiteDataset(torch.utils.data.Dataset):
         cursor.execute(f"SELECT * FROM {self.table_name} WHERE ID=?", (idx+1,))
         data_blob = cursor.fetchone()[1]
         conn.close()
-        tensor_data = torch.from_numpy(torch.tensor(data_blob))
+        tensor_data = torch.from_numpy(np.reshape(np.frombuffer(data_blob, dtype=np.float32).copy(), self.shape))
         return tensor_data
 
     def __len__(self):
-       return None
+       conn = sqlite3.connect(self.db_path)
+       cursor = conn.cursor()
+       cursor.execute(f"SELECT COUNT(*) FROM {self.table_name}")
+       length = cursor.fetchone()[0]
+       conn.close()
+       return length
+
 
