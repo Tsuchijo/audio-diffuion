@@ -44,18 +44,7 @@ class DDPM_Scheduler:
 
             # Log to wandb
             wandb.log({'Loss': loss.item()})
-            # if iteration % 250 == 0:
-            #     mel_image = x_t[0] - (((1 - self.alphas[timestep[0]]) / torch.sqrt(1 - self.alphas_bar[timestep[0]])) * eps[0])
-            #     # convert to numpy and add channel
-            #     mel_image = np.log(np.abs(np.expand_dims(mel_image.to('cpu').numpy(), axis=-1)))
-            #     noise_diff = np.expand_dims((eps_pred[0] - eps[0]).detach().to('cpu').numpy(), axis=-1)
-            #     wandb.log({"Denoised Spectrograph": wandb.Image(mel_image)})
-            #     wandb.log({"Noise Difference": wandb.Image(noise_diff)})
-            # if iteration % 10000 == 0:
-            #     ## Run 1 sampling pass
-            #     mel_image = self.inference(x0[0].unsqueeze(0))
-            #     mel_image = np.log(np.abs(np.expand_dims(mel_image.to('cpu').numpy(), axis=-1)))
-            #     wandb.log({"Sampled Spectrograph": wandb.Image(mel_image)})
+          
             print('Iteration: ', iteration, 'Loss: ', loss.item(), end='\r')
 
         
@@ -77,3 +66,8 @@ class DDPM_Scheduler:
                 else:
                     x_T = (1.0 / torch.sqrt(alpha_t)) * (x_T - (((1 - alpha_t) / torch.sqrt(1 - alpha_bar_t)) * epsilon))
             return x_T
+
+    def log_to_wand(self, iteration, x0):
+        if iteration % 1000 == 0:
+            image = self.inference(x0[0:10])  # Run inference
+            wandb.log({"Inference Image": [wandb.Image(image)]})  # Publish image to wandb

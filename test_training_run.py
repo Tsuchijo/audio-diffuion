@@ -6,7 +6,7 @@ import re
 import spectrogram
 import torchaudio 
 from scipy.io import wavfile
-from Models.models import Latent_MLP
+from Models.models import Latent_MLP, Unet
 from DDPM import DDPM_Scheduler
 import wandb
 import audio_dataloader
@@ -34,7 +34,7 @@ def main():
 
     loader = audio_dataloader.SQLiteDataset(data_path='data/embedding.db', table_name='embedding')
     dataloader = DataLoader(loader, batch_size=100, shuffle=True, num_workers=2)
-    model = Latent_MLP((8,num_frames//4,16), embedding_dim=1024, num_hidden=2)
+    model = Unet()
     wandb.init(project='ddpm-audio')
     ## Start training loop
     ddpm = DDPM_Scheduler(
