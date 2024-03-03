@@ -76,3 +76,62 @@ class Latent_MLP(torch.nn.Module):
             x1 = self.relu(getattr(self, f'fc{i}')(torch.cat((x1, self.timestep_embedding[timesteps]), dim=1)))
         x3 = self.fc_out(x1)
         return self.unflatten(x3)
+
+
+## Create U-Net architecture with Featurewose Linear Modulation to embed timesteps
+class encoder(torch.nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(encoder, self).__init__()
+        self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.maxpool = torch.nn.MaxPool2d(kernel_size=2, stride=2)
+        
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.maxpool(x)
+        return x
+    
+class decoder(torch.nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(decoder, self).__init__()
+        self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.upsample = torch.nn.Upsample(scale_factor=2, mode='nearest')
+        
+    def forward(self, x):
+        x = self.upsample(x)
+        x = self.conv(x)
+        return x
+
+
+## Create a U-Net model, which projects down the data then projects it up
+class Unet(torch.nn.Module):
+    def __init__(self, num_timesteps=1000, embedding_dim=1024):
+        self.enc1 = encoder(1, 64)
+        self.enc2 = encoder(64, 128)
+        self.enc3 = encoder(128, 256)
+
+        self.midpoint = torch.nn.Conv2d(256, 256, 3, 1, 1)
+
+        self.dec1 = decoder(256, 128)
+        self.dec2 = decoder(128, 64)
+        self.dec3 = decoder(64, 1)
+
+        self.timestep_embedding = get_timestep_embedding(torch.arange(num_timesteps), embedding_dim)
+        self.timestep_embedding = torch.nn.Parameter(self.timestep_embedding, requires_grad=False)
+
+        ## Create linear FiLM networks which project timestep to two 6 dimensional vectors
+        self.FiLMa = torch.nn.Linear(embedding_dim, 6)
+        self. FiLMb = torch.nn.Linear(embedding_dim, 6)
+
+    def forward(self, x, timesteps):
+        a_embeddings = self.FiLMa(self.timestep_embedding[timesteps])
+        b_embeddings = self.FiLMb(self.timestep_embedding[timesteps])
+
+        e_x1 = self.enc1(x)
+        e_x2 = self.enc2(a_embeddings[:, 0]*(e_x1)+b_embeddings[:, 0])
+        e_x3 = self.enc2(a_embeddings[:, 1]*(e_x2)+b_embeddings[:, 1])
+
+        d_x3 = self.midpoint(a_embeddings[:, 2]*(e_x3)+b_embeddings[:, 2])
+        d_x2 = self.dec1(a_embeddings[:, 3]*(d_x3 + e_x3) + b_embeddings[:, 3])
+        d_x1 = self.dec2(a_embeddings[:, 4]*(d_x2 + e_x2) + b_embeddings[:, 4])
+        y = self.dec3(a_embeddings[:, 5]*(d_x1 + e_x1) + b_embeddings[:, 5])
+        return y
