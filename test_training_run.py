@@ -31,10 +31,10 @@ def main():
     target_sample_rate = 16000
     num_frames = 255
     input_length = hop_length*num_frames*44100//target_sample_rate
-
-    loader = audio_dataloader.SQLiteDataset(data_path='data/embedding.db', table_name='embedding')
-    dataloader = DataLoader(loader, batch_size=100, shuffle=True, num_workers=2)
-    model = Latent_MLP((8,num_frames//4,16), embedding_dim=1024, num_hidden=2)
+    input_shape  = (8, (num_frames+1)//4, 16)
+    loader = audio_dataloader.SQLiteDataset(db_path='data/embedding.db', table_name='embedding', shape=input_shape)
+    dataloader = DataLoader(loader, batch_size=10, shuffle=True, num_workers=2)
+    model = Latent_MLP(input_shape, embedding_dim=1024, num_hidden=2)
     wandb.init(project='ddpm-audio')
     ## Start training loop
     ddpm = DDPM_Scheduler(

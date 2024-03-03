@@ -1,4 +1,4 @@
-checkpoints/*!.gitkeep
+checkpoints/*
 diffusion-env
 __pychache__
 data/
