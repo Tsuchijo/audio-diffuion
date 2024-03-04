@@ -105,7 +105,8 @@ class decoder(torch.nn.Module):
 ## Create a U-Net model, which projects down the data then projects it up
 class Unet(torch.nn.Module):
     def __init__(self, num_timesteps=1000, embedding_dim=1024):
-        self.enc1 = encoder(1, 64)
+        super(Unet, self).__init__()
+        self.enc1 = encoder(8, 64)
         self.enc2 = encoder(64, 128)
         self.enc3 = encoder(128, 256)
 
@@ -113,7 +114,7 @@ class Unet(torch.nn.Module):
 
         self.dec1 = decoder(256, 128)
         self.dec2 = decoder(128, 64)
-        self.dec3 = decoder(64, 1)
+        self.dec3 = decoder(64, 8)
 
         self.timestep_embedding = get_timestep_embedding(torch.arange(num_timesteps), embedding_dim)
         self.timestep_embedding = torch.nn.Parameter(self.timestep_embedding, requires_grad=False)
@@ -123,12 +124,11 @@ class Unet(torch.nn.Module):
         self. FiLMb = torch.nn.Linear(embedding_dim, 6)
 
     def forward(self, x, timesteps):
-        a_embeddings = self.FiLMa(self.timestep_embedding[timesteps])
-        b_embeddings = self.FiLMb(self.timestep_embedding[timesteps])
-
-        e_x1 = self.enc1(x)
+        a_embeddings = self.FiLMa(self.timestep_embedding[timesteps]).unsqueeze(2).unsqueeze(3).unsqueeze(4)
+        b_embeddings = self.FiLMb(self.timestep_embedding[timesteps]).unsqueeze(2).unsqueeze(3).unsqueeze(4)
+        e_x1 = self.enc1(x.squeeze(1))
         e_x2 = self.enc2(a_embeddings[:, 0]*(e_x1)+b_embeddings[:, 0])
-        e_x3 = self.enc2(a_embeddings[:, 1]*(e_x2)+b_embeddings[:, 1])
+        e_x3 = self.enc3(a_embeddings[:, 1]*(e_x2)+b_embeddings[:, 1])
 
         d_x3 = self.midpoint(a_embeddings[:, 2]*(e_x3)+b_embeddings[:, 2])
         d_x2 = self.dec1(a_embeddings[:, 3]*(d_x3 + e_x3) + b_embeddings[:, 3])
